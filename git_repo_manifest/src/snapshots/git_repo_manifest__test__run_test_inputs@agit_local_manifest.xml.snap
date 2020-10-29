@@ -1,0 +1,55 @@
+---
+source: src/test.rs
+expression: foo
+input_file: src/test_inputs/agit_local_manifest.xml
+---
+Ok(
+    Manifest {
+        notice: None,
+        manifest_server: None,
+        remotes: [
+            Remote {
+                name: "foo",
+                alias: None,
+                pushurl: Some(
+                    "ssh://pusher@example.com:2222/~pusher/foo",
+                ),
+                fetch: "ssh://test@example.com:2222/~test/foo",
+                review: Some(
+                    "ssh://reviewer@example.com:2222/",
+                ),
+                revision: None,
+                type: Some(
+                    AGit,
+                ),
+                override: Some(
+                    true,
+                ),
+            },
+            Remote {
+                name: "bar",
+                alias: None,
+                pushurl: Some(
+                    "ssh://pusher@example.com:2222/~pusher/bar",
+                ),
+                fetch: "ssh://test@example.com:2222/~test/bar",
+                review: Some(
+                    "ssh://reviewer@example.com:2222/",
+                ),
+                revision: None,
+                type: Some(
+                    Gerrit,
+                ),
+                override: Some(
+                    true,
+                ),
+            },
+        ],
+        default: None,
+        remove_projects: [],
+        projects: [],
+        extend_projects: [],
+        repo_hooks: None,
+        includes: [],
+    },
+)

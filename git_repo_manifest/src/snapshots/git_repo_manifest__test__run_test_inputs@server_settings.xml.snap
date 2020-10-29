@@ -1,0 +1,47 @@
+---
+source: src/test.rs
+expression: foo
+input_file: src/test_inputs/server_settings.xml
+---
+Ok(
+    Manifest {
+        notice: None,
+        manifest_server: None,
+        remotes: [
+            Remote {
+                name: "origin",
+                alias: None,
+                pushurl: None,
+                fetch: "https://github.com/",
+                review: Some(
+                    "https://github.com/",
+                ),
+                revision: None,
+                type: None,
+                override: None,
+            },
+        ],
+        default: Some(
+            DefaultTag {
+                remote: Some(
+                    "origin",
+                ),
+                revision: Some(
+                    "master",
+                ),
+                dest_branch: None,
+                upstream: None,
+                sync_j: Some(
+                    "1",
+                ),
+                sync_c: None,
+                sync_s: None,
+            },
+        ),
+        remove_projects: [],
+        projects: [],
+        extend_projects: [],
+        repo_hooks: None,
+        includes: [],
+    },
+)

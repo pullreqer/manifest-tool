@@ -1,0 +1,5 @@
+default.xml, server_settings.xml:
+	https://github.com/remybohmer/demo-manifests.git
+
+camkes_vm_manifest.xml:
+	https://github.com/SEL4PROJ/camkes-vm-manifest.git

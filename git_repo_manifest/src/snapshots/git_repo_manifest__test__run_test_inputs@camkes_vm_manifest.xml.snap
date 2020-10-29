@@ -1,0 +1,518 @@
+---
+source: src/test.rs
+expression: foo
+input_file: src/test_inputs/camkes_vm_manifest.xml
+---
+Ok(
+    Manifest {
+        notice: None,
+        manifest_server: None,
+        remotes: [
+            Remote {
+                name: "seL4",
+                alias: None,
+                pushurl: None,
+                fetch: "../seL4",
+                review: None,
+                revision: None,
+                type: None,
+                override: None,
+            },
+            Remote {
+                name: "sel4proj",
+                alias: None,
+                pushurl: None,
+                fetch: "../sel4proj",
+                review: None,
+                revision: None,
+                type: None,
+                override: None,
+            },
+            Remote {
+                name: "picotcp",
+                alias: None,
+                pushurl: None,
+                fetch: "https://github.com/tass-belgium",
+                review: None,
+                revision: None,
+                type: None,
+                override: None,
+            },
+            Remote {
+                name: "polly",
+                alias: None,
+                pushurl: None,
+                fetch: "https://github.com/ruslo",
+                review: None,
+                revision: None,
+                type: None,
+                override: None,
+            },
+            Remote {
+                name: "zeromq",
+                alias: None,
+                pushurl: None,
+                fetch: "https://github.com/zeromq",
+                review: None,
+                revision: None,
+                type: None,
+                override: None,
+            },
+        ],
+        default: Some(
+            DefaultTag {
+                remote: Some(
+                    "seL4",
+                ),
+                revision: Some(
+                    "master",
+                ),
+                dest_branch: None,
+                upstream: None,
+                sync_j: None,
+                sync_c: None,
+                sync_s: None,
+            },
+        ),
+        remove_projects: [],
+        projects: [
+            Project {
+                name: "camkes-vm-apps.git",
+                path: Some(
+                    "projects/vm-apps",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "65f8af3e0a4468712e4cf74ade65ea12a4307fad",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "camkes-tool.git",
+                path: Some(
+                    "projects/camkes-tool",
+                ),
+                remote: None,
+                revision: Some(
+                    "fa0d94d4a3021ba23b92b07e764d4a3e8d371e6e",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "camkes-vm-images.git",
+                path: Some(
+                    "projects/camkes-vm-images",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "d7663269afe511138b6b961588a550125870af08",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "camkes-vm-linux.git",
+                path: Some(
+                    "projects/camkes-vm-linux",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "8217f9bde8fb71b42ede2d66632a0555bba139df",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "camkes-vm.git",
+                path: Some(
+                    "projects/camkes-vm",
+                ),
+                remote: None,
+                revision: Some(
+                    "20fb81d77098c376a24e9dbeb8405798a315eb66",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "capdl.git",
+                path: Some(
+                    "projects/capdl",
+                ),
+                remote: None,
+                revision: Some(
+                    "29b66b82fdae3a3791e18d9b6b7efaf2ad89096a",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "global-components.git",
+                path: Some(
+                    "projects/global-components",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "790ef0f52841f4f92a28f94a21380b80d23c3e76",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "libzmq",
+                path: Some(
+                    "projects/libzmq",
+                ),
+                remote: Some(
+                    "zeromq",
+                ),
+                revision: Some(
+                    "d062edd8c142384792955796329baf1e5a3377cd",
+                ),
+                dest_branch: Some(
+                    "refs/tags/v4.2.5",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "refs/tags/v4.2.5",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "musllibc.git",
+                path: Some(
+                    "projects/musllibc",
+                ),
+                remote: None,
+                revision: Some(
+                    "4a8335b2248d934e2e40386af4f1b0495b3c173d",
+                ),
+                dest_branch: Some(
+                    "sel4",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "sel4",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "picotcp.git",
+                path: Some(
+                    "projects/picotcp",
+                ),
+                remote: Some(
+                    "picotcp",
+                ),
+                revision: Some(
+                    "13c00a067190f5ec62340ed932a2bb833c366d63",
+                ),
+                dest_branch: Some(
+                    "refs/tags/v1.7.0",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "refs/tags/v1.7.0",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "polly",
+                path: Some(
+                    "tools/polly",
+                ),
+                remote: Some(
+                    "polly",
+                ),
+                revision: Some(
+                    "dc0330177231aec6bbfaa53ee58d279c875b520c",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "projects_libs.git",
+                path: Some(
+                    "projects/projects_libs",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "947fa8e1723948f2792df33dcd3c43b15aca6296",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "seL4.git",
+                path: Some(
+                    "kernel",
+                ),
+                remote: None,
+                revision: Some(
+                    "63432c91d54f9a1a1ab1ed278f788ba64ec6dba8",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "seL4_libs.git",
+                path: Some(
+                    "projects/seL4_libs",
+                ),
+                remote: None,
+                revision: Some(
+                    "984ee48dec0310b367cf4a991da545c18ae6e1e8",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "seL4_projects_libs.git",
+                path: Some(
+                    "projects/seL4_projects_libs",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "c15bec1db0ebc8eba0659a2a2a3a6c2696b59f17",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "seL4_tools.git",
+                path: Some(
+                    "tools/seL4",
+                ),
+                remote: None,
+                revision: Some(
+                    "ffe3305d8d3926ccfa0fa8019063c786b75850d6",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "sel4runtime.git",
+                path: Some(
+                    "projects/sel4runtime",
+                ),
+                remote: Some(
+                    "sel4proj",
+                ),
+                revision: Some(
+                    "b15a663ceaf7798e39fcba9909fcc5d8359337cf",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+            Project {
+                name: "util_libs.git",
+                path: Some(
+                    "projects/util_libs",
+                ),
+                remote: None,
+                revision: Some(
+                    "f945cf6f3f894a70d5319ecbfa7d6076b836b172",
+                ),
+                dest_branch: Some(
+                    "master",
+                ),
+                groups: None,
+                rebase: None,
+                sync_c: None,
+                sync_s: None,
+                sync_tags: None,
+                upstream: Some(
+                    "master",
+                ),
+                clone_depth: None,
+                force_path: None,
+            },
+        ],
+        extend_projects: [],
+        repo_hooks: None,
+        includes: [],
+    },
+)

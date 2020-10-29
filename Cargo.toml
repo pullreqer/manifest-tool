@@ -1,0 +1,15 @@
+[package]
+name = "manifest-tool"
+version = "0.1.0"
+authors = ["matt rice <ratmice@gmail.com>"]
+description = "ad-hoc tool for generating git-repo local-manifest xml files from input manifests"
+edition = "2018"
+
+[workspace]
+
+[dependencies]
+gumdrop = "0.8.0"
+git_repo_manifest = { path = "git_repo_manifest" }
+quick-error = "2.0.0"
+envsubst = "0.2.0"
+dirs-next = "2.0.0"

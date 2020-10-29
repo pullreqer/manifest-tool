@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="foo" fetch="ssh://test@example.com:2222/~test/foo" review="ssh://reviewer@example.com:2222/" override="true" pushurl="ssh://pusher@example.com:2222/~pusher/foo" type="agit" />
+  <remote name="bar" fetch="ssh://test@example.com:2222/~test/bar" review="ssh://reviewer@example.com:2222/" override="true" pushurl="ssh://pusher@example.com:2222/~pusher/bar" type="gerrit" />
+</manifest>
+</xml>
+

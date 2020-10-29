@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+	<include name="common/server_settings.xml" />
+	<project path="project1"	name="remybohmer/demo-project-1" />
+	<project path="project2"	name="remybohmer/demo-project-2" />
+	<project path="lfs-test"        name="dpursehouse/lfs-test" />
+
+	<project path=".repo_hooks"     name="remybohmer/demo-repo-hooks" />
+	<repo-hooks in-project="remybohmer/demo-repo-hooks" enabled-list="post-sync pre-upload" />
+
+	<notice>You checked out the default manifest</notice>
+
+</manifest>
