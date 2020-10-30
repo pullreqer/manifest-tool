@@ -39,6 +39,7 @@ pub struct Manifest {
 }
 
 impl Manifest {
+    // FIXME add more defaults.
     pub fn set_defaults(&mut self) {
         if let Some(default) = &self.default {
             if let Some(remote) = &default.remote {

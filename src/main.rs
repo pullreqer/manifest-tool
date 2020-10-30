@@ -35,13 +35,13 @@ struct Args {
     #[options(help = "print help message")]
     help: bool,
 
-    #[options(help = "specify a push url")]
+    #[options(long = "set-push-url", help = "specify a push url")]
     push_url: Option<String>,
 
-    #[options(help = "specify a fetch url")]
+    #[options(long = "set-fetch-url", help = "specify a fetch url")]
     fetch_url: Option<String>,
 
-    #[options(help = "specify a review url")]
+    #[options(long = "set-review-url", help = "specify a review url")]
     review_url: Option<String>,
 
     #[options(long = "override", help = "allow overriding duplicates")]
@@ -50,14 +50,11 @@ struct Args {
     #[options(help = "review protocol")]
     review_protocol: Option<git_repo_manifest::ReviewProtocolType>,
 
-    #[options(
-        long = "envsubst-projects",
-        help = "envsubst <file> for all projects to stdout"
-    )]
-    envsubst_all_projects: Option<String>,
+    #[options(help = "envsubst <file> for all projects to stdout")]
+    projects_envsubst: Option<String>,
 
-    #[options(free)]
-    manifest_files: Vec<String>,
+    #[options(help = "set to localize manifests")]
+    localize_manifests: bool,
 }
 
 fn split_once(s: &str, delim: char) -> Option<(&str, &str)> {
@@ -100,7 +97,7 @@ fn main() -> Result<(), Error> {
         let _ = io::BufReader::new(fd).read_to_string(&mut config_str)?;
     };
 
-    if let Some(envsubst_file_name) = args.envsubst_all_projects {
+    if let Some(envsubst_file_name) = args.projects_envsubst {
         let mut template = String::new();
         if envsubst_file_name == "-" {
             io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
@@ -136,10 +133,8 @@ fn main() -> Result<(), Error> {
         return Ok(stdout.flush()?);
     }
 
-    // FIXME this branch is pretty terrible, we aren't doing anything if args *are* given,
-    // and should refactor the contents into some other function..
-    // that said this is just a quick hack at an ad-hoc utility so it works for now.
-    if args.manifest_files.is_empty() {
+    // FIXME clean this up.
+    if args.localize_manifests {
         if let Ok(dirs) = std::fs::read_dir(".repo/manifests") {
             for dir_entry in dirs {
                 let dir_entry = dir_entry?;
@@ -163,16 +158,12 @@ fn main() -> Result<(), Error> {
                         let mut config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
                         let mut args_map: HashMap<String, String> = HashMap::new();
                         if let Some(push_url) = args.push_url.clone() {
-                            args_map.insert(
-                                "push_url".to_string(),
-                                substitute(push_url, &context)?,
-                            );
+                            args_map
+                                .insert("push_url".to_string(), substitute(push_url, &context)?);
                         }
                         if let Some(fetch_url) = args.fetch_url.clone() {
-                            args_map.insert(
-                                "fetch_url".to_string(),
-                                substitute(fetch_url, &context)?,
-                            );
+                            args_map
+                                .insert("fetch_url".to_string(), substitute(fetch_url, &context)?);
                         }
                         if let Some(review_url) = args.review_url.clone() {
                             args_map.insert(
@@ -182,10 +173,7 @@ fn main() -> Result<(), Error> {
                         }
 
                         if let Some(review_protocol) = args.review_url.clone() {
-                            args_map.insert(
-                                "review_protocol".to_string(),
-                                review_protocol,
-                            );
+                            args_map.insert("review_protocol".to_string(), review_protocol);
                         }
 
                         config.extend(args_map);
