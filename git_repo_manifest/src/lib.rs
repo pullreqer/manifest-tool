@@ -38,6 +38,20 @@ pub struct Manifest {
     includes: Vec<Include>,
 }
 
+impl Manifest {
+    pub fn set_defaults(&mut self) -> () {
+        if let Some(default) = &self.default {
+            if let Some(remote) = &default.remote {
+                for project in &mut self.projects {
+                    if project.remote == None {
+                        project.remote = Some(remote.to_string());
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Getters, new)]
 pub struct Notice {
     #[serde(rename = "$value", default)]

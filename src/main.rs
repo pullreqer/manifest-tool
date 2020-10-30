@@ -8,7 +8,7 @@ use quick_xml as qxml;
 use serde::ser::Serialize;
 
 use std::collections::HashMap;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, Read, Write};
 use std::str::FromStr;
 use std::{ffi, fs, io, path, str};
 
@@ -50,6 +50,12 @@ struct Args {
     #[options(help = "review protocol")]
     review_protocol: Option<git_repo_manifest::ReviewProtocolType>,
 
+    #[options(
+        long = "envsubst-projects",
+        help = "envsubst <file> for all projects to stdout"
+    )]
+    envsubst_all_projects: Option<String>,
+
     #[options(free)]
     manifest_files: Vec<String>,
 }
@@ -72,6 +78,15 @@ fn read_dot_env<T: io::Read>(fd: io::BufReader<T>) -> Result<HashMap<String, Str
     Ok(map)
 }
 
+fn envsubst_write(
+    template_string: &'_ str,
+    output: &mut dyn io::Write,
+    contents: HashMap<String, String>,
+) -> Result<(), Error> {
+    let s = envsubst::substitute(template_string, &contents)?;
+    Ok(output.write_all(s.as_bytes())?)
+}
+
 fn main() -> Result<(), Error> {
     let args = Args::parse_args_default_or_exit();
     let config_file = dirs::config_dir().map(|mut dir| {
@@ -84,6 +99,42 @@ fn main() -> Result<(), Error> {
         let fd = fs::File::open(config_file)?;
         let _ = io::BufReader::new(fd).read_to_string(&mut config_str)?;
     };
+
+    if let Some(envsubst_file_name) = args.envsubst_all_projects {
+        let mut template = String::new();
+        if envsubst_file_name == "-" {
+            io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
+        } else {
+            io::BufReader::new(fs::File::open(envsubst_file_name)?)
+                .read_to_string(&mut template)?;
+        }
+        let template = template;
+        let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
+        let default_file = io::BufReader::new(default_file);
+        let mut manifest: Manifest = manifest::de::from_reader(default_file)?;
+        manifest.set_defaults();
+        let mut remote_hash = HashMap::new();
+        manifest.remotes().iter().for_each(|remote| {
+            remote_hash.insert(remote.name().to_string(), remote);
+        });
+
+        let mut stdout = io::BufWriter::new(io::stdout());
+        for project in manifest.projects() {
+            let mut context: HashMap<String, String> = HashMap::new();
+            if let Some(remote_name) = project.remote() {
+                context.insert("remote_name".to_string(), remote_name.to_string());
+                if let Some(remote) = remote_hash.get(remote_name) {
+                    if let Some(push_url) = remote.pushurl() {
+                        context.insert("push_url".to_string(), push_url.to_string());
+                    }
+                    context.insert("fetch_url".to_string(), remote.fetch().to_string());
+                }
+            }
+            context.insert("project_name".to_string(), project.name().to_string());
+            envsubst_write(&template, &mut stdout, context)?;
+        }
+        return Ok(stdout.flush()?);
+    }
 
     // FIXME this branch is pretty terrible, we aren't doing anything if args *are* given,
     // and should refactor the contents into some other function..
