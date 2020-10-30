@@ -8,6 +8,7 @@ use quick_xml as qxml;
 use serde::ser::Serialize;
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::io::{BufRead, Read, Write};
 use std::str::FromStr;
 use std::{ffi, fs, io, path, str};
@@ -27,6 +28,10 @@ quick_error! {
 
     ConfigFileFormat
     FetchRequired
+    UnspecifiedQuantifier
+    TemplateNotFound(path: String) {
+        display("template not found: {}", path)
+    }
     }
 }
 
@@ -50,16 +55,58 @@ struct Args {
     #[options(help = "review protocol")]
     review_protocol: Option<git_repo_manifest::ReviewProtocolType>,
 
-    #[options(help = "envsubst <file> for all projects to stdout")]
-    projects_envsubst: Option<String>,
+    #[options(help = "for all projects")]
+    projects: bool,
+
+    #[options(help = "for all remotes")]
+    remotes: bool,
 
     #[options(help = "set to localize manifests")]
     localize_manifests: bool,
+
+    #[options(help = "template file")]
+    template_file: String,
 }
 
 fn split_once(s: &str, delim: char) -> Option<(&str, &str)> {
     let pos = s.find(delim);
     pos.map(|idx| (&s[0..idx], &s[idx + delim.len_utf8()..]))
+}
+
+enum TemplateKind {
+    Projects,
+    Remotes,
+    _Unknown,
+}
+
+impl TryInto<&'static str> for TemplateKind {
+    type Error = Error;
+    fn try_into(self) -> Result<&'static str, Error> {
+        match self {
+            TemplateKind::Projects => Ok("projects"),
+            TemplateKind::Remotes => Ok("remotes"),
+            TemplateKind::_Unknown => Err(Error::UnspecifiedQuantifier),
+        }
+    }
+}
+
+fn read_template_file(template_file: String, k: TemplateKind) -> Result<String, crate::Error> {
+    let path = path::Path::new(&template_file);
+    let mut template = String::new();
+    if template_file == "-" {
+        io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
+    } else if let Some(mut file_path) = dirs::config_dir() {
+        file_path.extend(&["manifest-tool", k.try_into()?, template_file.as_str()]);
+        let mut f = fs::File::open(path)?;
+        f.read_to_string(&mut template)?;
+    } else if path.exists() {
+        let mut f = fs::File::open(path)?;
+        f.read_to_string(&mut template)?;
+    } else {
+        return Err(Error::TemplateNotFound(template_file));
+    }
+
+    Ok(template)
 }
 
 fn read_dot_env<T: io::Read>(fd: io::BufReader<T>) -> Result<HashMap<String, String>, Error> {
@@ -78,10 +125,29 @@ fn read_dot_env<T: io::Read>(fd: io::BufReader<T>) -> Result<HashMap<String, Str
 fn envsubst_write(
     template_string: &'_ str,
     output: &mut dyn io::Write,
-    contents: HashMap<String, String>,
+    contents: &HashMap<String, String>,
 ) -> Result<(), Error> {
     let s = substitute(template_string, &contents)?;
     Ok(output.write_all(s.as_bytes())?)
+}
+
+fn add_context_for_remote<'a>(remote: &manifest::Remote, context: &'a mut HashMap<String, String>) {
+    context.insert("remote_name".to_string(), remote.name().to_string());
+    let () = remote
+        .pushurl()
+        .iter()
+        .map(|pushurl| {
+            let _ = context.insert("push_url".to_string(), pushurl.to_string());
+        })
+        .collect();
+    context.insert("fetch_url".to_string(), remote.fetch().to_string());
+    let () = remote
+        .review()
+        .iter()
+        .map(|review| {
+            let _ = context.insert("review_url".to_string(), review.to_string());
+        })
+        .collect();
 }
 
 fn main() -> Result<(), Error> {
@@ -97,15 +163,16 @@ fn main() -> Result<(), Error> {
         let _ = io::BufReader::new(fd).read_to_string(&mut config_str)?;
     };
 
-    if let Some(envsubst_file_name) = args.projects_envsubst {
-        let mut template = String::new();
-        if envsubst_file_name == "-" {
-            io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
-        } else {
-            io::BufReader::new(fs::File::open(envsubst_file_name)?)
-                .read_to_string(&mut template)?;
-        }
-        let template = template;
+    let template_kind = if args.projects {
+        Ok(TemplateKind::Projects)
+    } else if args.remotes {
+        Ok(TemplateKind::Remotes)
+    } else {
+        Err(Error::UnspecifiedQuantifier)
+    }?;
+
+    let template = read_template_file(args.template_file, template_kind)?;
+    if args.projects {
         let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
         let default_file = io::BufReader::new(default_file);
         let mut manifest: Manifest = manifest::de::from_reader(default_file)?;
@@ -128,12 +195,23 @@ fn main() -> Result<(), Error> {
                 }
             }
             context.insert("project_name".to_string(), project.name().to_string());
-            envsubst_write(&template, &mut stdout, context)?;
+            envsubst_write(&template, &mut stdout, &context)?;
         }
         return Ok(stdout.flush()?);
     }
 
-    // FIXME clean this up.
+    if args.remotes {
+        let mut stdout = io::BufWriter::new(io::stdout());
+        let mut context: HashMap<String, String> = HashMap::new();
+        let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
+        let default_file = io::BufReader::new(default_file);
+        let manifest: Manifest = manifest::de::from_reader(default_file)?;
+        for remote in manifest.remotes() {
+            add_context_for_remote(remote, &mut context);
+            envsubst_write(&template, &mut stdout, &mut context)?;
+        }
+    }
+
     if args.localize_manifests {
         if let Ok(dirs) = std::fs::read_dir(".repo/manifests") {
             for dir_entry in dirs {
@@ -156,6 +234,7 @@ fn main() -> Result<(), Error> {
                         let context: HashMap<_, _> = to_subst.into_iter().collect();
                         let config_subst = substitute(config_str.clone(), &context)?;
                         let mut config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
+
                         let mut args_map: HashMap<String, String> = HashMap::new();
                         if let Some(push_url) = args.push_url.clone() {
                             args_map
@@ -175,8 +254,8 @@ fn main() -> Result<(), Error> {
                         if let Some(review_protocol) = args.review_url.clone() {
                             args_map.insert("review_protocol".to_string(), review_protocol);
                         }
-
                         config.extend(args_map);
+
                         if let Some(fetch_url) = config.get("fetch_url") {
                             let local_remote = manifest::Remote::new(
                                 name.clone(),
