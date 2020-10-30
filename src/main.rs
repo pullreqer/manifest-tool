@@ -14,24 +14,6 @@ use std::io::Read;
 use std::path;
 use std::str;
 use std::str::FromStr;
-#[derive(Debug)]
-struct ReviewProtocol(git_repo_manifest::ReviewProtocolType);
-
-impl Default for ReviewProtocol {
-    fn default() -> ReviewProtocol {
-        ReviewProtocol(git_repo_manifest::ReviewProtocolType::AGit)
-    }
-}
-
-impl str::FromStr for ReviewProtocol {
-    type Err = <git_repo_manifest::ReviewProtocolType as str::FromStr>::Err;
-
-    fn from_str(it: &str) -> Result<ReviewProtocol, Self::Err> {
-        Ok(ReviewProtocol(
-            git_repo_manifest::ReviewProtocolType::from_str(it)?,
-        ))
-    }
-}
 
 quick_error! {
     #[derive(Debug)]
@@ -69,7 +51,7 @@ struct Args {
     override_dup: bool,
 
     #[options(help = "review protocol")]
-    review_protocol: Option<ReviewProtocol>,
+    review_protocol: Option<git_repo_manifest::ReviewProtocolType>,
 
     #[options(free)]
     manifest_files: Vec<String>,
