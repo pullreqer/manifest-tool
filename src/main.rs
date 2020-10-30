@@ -46,6 +46,9 @@ struct Args {
     #[options(help = "for all remotes")]
     remotes: bool,
 
+    #[options(short = 'd', long = "dir", help = "template dir")]
+    template_dir: Option<String>,
+
     #[options(help = "set to localize manifests")]
     localize_manifests: bool,
 
@@ -75,23 +78,35 @@ impl TryInto<&'static str> for TemplateKind {
     }
 }
 
-fn read_template_file(template_file: String, k: TemplateKind) -> Result<String, crate::Error> {
-    let path = path::Path::new(&template_file);
-    let mut template = String::new();
-    if template_file == "-" {
-        io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
-    } else if let Some(mut file_path) = dirs::config_dir() {
-        file_path.extend(&["manifest-tool", k.try_into()?, template_file.as_str()]);
-        let mut f = fs::File::open(path)?;
-        f.read_to_string(&mut template)?;
-    } else if path.exists() {
-        let mut f = fs::File::open(path)?;
-        f.read_to_string(&mut template)?;
+fn template_path(path: &Option<String>) -> Option<path::PathBuf> {
+    if let Some(dir) = path {
+        let mut pbuf = path::PathBuf::new();
+        pbuf.push(dir);
+        Some(pbuf)
     } else {
-        return Err(Error::TemplateNotFound(template_file));
+        dirs::config_dir()
     }
+}
 
-    Ok(template)
+impl Args {
+    fn read_template_file(self: &Self, k: TemplateKind) -> Result<String, crate::Error> {
+        let path = path::Path::new(&self.template_file);
+        let mut template = String::new();
+        if self.template_file == "-" {
+            io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
+        } else if let Some(mut file_path) = template_path(&self.template_dir) {
+            file_path.extend(&["manifest-tool", k.try_into()?, self.template_file.as_str()]);
+            let mut f = fs::File::open(path)?;
+            f.read_to_string(&mut template)?;
+        } else if path.exists() {
+            let mut f = fs::File::open(path)?;
+            f.read_to_string(&mut template)?;
+        } else {
+            return Err(Error::TemplateNotFound(self.template_file.clone()));
+        }
+
+        Ok(template)
+    }
 }
 
 fn read_dot_env<T: io::Read>(fd: io::BufReader<T>) -> Result<HashMap<String, String>, Error> {
@@ -156,7 +171,7 @@ fn main() -> Result<(), Error> {
         Err(Error::UnspecifiedQuantifier)
     }?;
 
-    let template = read_template_file(args.template_file, template_kind)?;
+    let template = args.read_template_file(template_kind)?;
     if args.projects {
         let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
         let default_file = io::BufReader::new(default_file);
