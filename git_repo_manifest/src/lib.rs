@@ -1,13 +1,12 @@
 use derive_getters::Getters;
 use derive_new::new;
 use quick_error::quick_error;
+pub use quick_xml::de;
+pub use quick_xml::se;
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::str::FromStr;
-
-pub use quick_xml::de;
-pub use quick_xml::se;
 #[cfg(test)]
 mod test;
 
