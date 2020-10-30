@@ -117,16 +117,10 @@ fn main() -> Result<(), Error> {
                 if extension == Some("xml") {
                     let file = io::BufReader::new(fs::File::open(dir_entry.path())?);
                     let manifest: Manifest = manifest::de::from_reader(file)?;
-                    let local_path = dir_entry
-                        .path()
-                        .parent()
-                        .unwrap() // ok: ".repo/manifests"
-                        .parent()
-                        .unwrap() // ok: ".repo/"
-                        .join(path::Path::new("local_manifests"));
-                    fs::create_dir_all(local_path.clone())?;
-                    let local_path = local_path.join(file_name.clone());
-                    let mut local_manifest_file = fs::File::create(local_path)?;
+                    let local_manifests_path = path::Path::new(".repo").join("local_manifests");
+                    fs::create_dir_all(local_manifests_path.clone())?;
+                    let local_manifest_path = local_manifests_path.join(file_name);
+                    let mut local_manifest_file = fs::File::create(local_manifest_path)?;
                     let mut remotes = Vec::new();
                     for remote in manifest.remotes() {
                         let name = remote.name();
