@@ -106,6 +106,9 @@ fn main() -> Result<(), Error> {
         let _ = io::BufReader::new(fd).read_to_string(&mut config_str)?;
     };
 
+    // FIXME this branch is pretty terrible, we aren't doing anything if args *are* given,
+    // and should refactor the contents into some other function..
+    // that said this is just a quick hack at an ad-hoc utility so it works for now.
     if args.manifest_files.len() == 0 {
         if let Ok(dirs) = std::fs::read_dir(".repo/manifests") {
             for dir_entry in dirs {
