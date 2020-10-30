@@ -1,7 +1,7 @@
 ---
-source: src/test.rs
+source: git_repo_manifest/src/test.rs
 expression: foo
-input_file: src/test_inputs/default.xml
+input_file: git_repo_manifest/src/test_inputs/remybohmer.default.xml
 ---
 Ok(
     Manifest {
