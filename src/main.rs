@@ -40,21 +40,6 @@ struct Args {
     #[options(help = "print help message")]
     help: bool,
 
-    #[options(long = "set-push-url", help = "specify a push url")]
-    push_url: Option<String>,
-
-    #[options(long = "set-fetch-url", help = "specify a fetch url")]
-    fetch_url: Option<String>,
-
-    #[options(long = "set-review-url", help = "specify a review url")]
-    review_url: Option<String>,
-
-    #[options(long = "override", help = "allow overriding duplicates")]
-    override_dup: bool,
-
-    #[options(help = "review protocol")]
-    review_protocol: Option<git_repo_manifest::ReviewProtocolType>,
-
     #[options(help = "for all projects")]
     projects: bool,
 
@@ -233,28 +218,7 @@ fn main() -> Result<(), Error> {
                         let to_subst = vec![("remote_name".to_string(), name.to_string())];
                         let context: HashMap<_, _> = to_subst.into_iter().collect();
                         let config_subst = substitute(config_str.clone(), &context)?;
-                        let mut config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
-
-                        let mut args_map: HashMap<String, String> = HashMap::new();
-                        if let Some(push_url) = args.push_url.clone() {
-                            args_map
-                                .insert("push_url".to_string(), substitute(push_url, &context)?);
-                        }
-                        if let Some(fetch_url) = args.fetch_url.clone() {
-                            args_map
-                                .insert("fetch_url".to_string(), substitute(fetch_url, &context)?);
-                        }
-                        if let Some(review_url) = args.review_url.clone() {
-                            args_map.insert(
-                                "review_url".to_string(),
-                                substitute(review_url, &context)?,
-                            );
-                        }
-
-                        if let Some(review_protocol) = args.review_url.clone() {
-                            args_map.insert("review_protocol".to_string(), review_protocol);
-                        }
-                        config.extend(args_map);
+                        let config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
 
                         if let Some(fetch_url) = config.get("fetch_url") {
                             let local_remote = manifest::Remote::new(
