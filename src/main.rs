@@ -1,19 +1,16 @@
 use dirs_next as dirs;
+use envsubst;
 use git_repo_manifest as manifest;
 use git_repo_manifest::Manifest;
 use gumdrop::Options;
 use quick_error::quick_error;
+use quick_xml as qxml;
+use serde::ser::Serialize;
 
-use envsubst;
 use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs;
-use std::io;
-use std::io::BufRead;
-use std::io::Read;
-use std::path;
-use std::str;
+use std::io::{BufRead, Read};
 use std::str::FromStr;
+use std::{ffi, fs, io, path, str};
 
 quick_error! {
     #[derive(Debug)]
@@ -98,7 +95,7 @@ fn main() -> Result<(), Error> {
                 let file_name = dir_entry.file_name();
                 let extension = path::Path::new(&file_name)
                     .extension()
-                    .and_then(OsStr::to_str);
+                    .and_then(ffi::OsStr::to_str);
                 if extension == Some("xml") {
                     let file = io::BufReader::new(fs::File::open(dir_entry.path())?);
                     let manifest: Manifest = manifest::de::from_reader(file)?;
@@ -170,7 +167,9 @@ fn main() -> Result<(), Error> {
                         None,
                         vec![],
                     );
-                    manifest::se::to_writer(&mut local_manifest_file, &manifest)?
+                    let writer = qxml::Writer::new_with_indent(&mut local_manifest_file, b'\t', 1);
+                    let mut ser = manifest::se::Serializer::with_root(writer, None);
+                    manifest.serialize(&mut ser)?;
                 }
             }
         }
