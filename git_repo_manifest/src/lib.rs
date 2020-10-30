@@ -39,7 +39,7 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    pub fn set_defaults(&mut self) -> () {
+    pub fn set_defaults(&mut self) {
         if let Some(default) = &self.default {
             if let Some(remote) = &default.remote {
                 for project in &mut self.projects {

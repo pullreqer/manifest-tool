@@ -1,5 +1,5 @@
 use dirs_next as dirs;
-use envsubst;
+use envsubst::{self, substitute};
 use git_repo_manifest as manifest;
 use git_repo_manifest::Manifest;
 use gumdrop::Options;
@@ -60,7 +60,7 @@ struct Args {
     manifest_files: Vec<String>,
 }
 
-fn split_once<'a>(s: &'a str, delim: char) -> Option<(&'a str, &'a str)> {
+fn split_once(s: &str, delim: char) -> Option<(&str, &str)> {
     let pos = s.find(delim);
     pos.map(|idx| (&s[0..idx], &s[idx + delim.len_utf8()..]))
 }
@@ -83,7 +83,7 @@ fn envsubst_write(
     output: &mut dyn io::Write,
     contents: HashMap<String, String>,
 ) -> Result<(), Error> {
-    let s = envsubst::substitute(template_string, &contents)?;
+    let s = substitute(template_string, &contents)?;
     Ok(output.write_all(s.as_bytes())?)
 }
 
@@ -139,7 +139,7 @@ fn main() -> Result<(), Error> {
     // FIXME this branch is pretty terrible, we aren't doing anything if args *are* given,
     // and should refactor the contents into some other function..
     // that said this is just a quick hack at an ad-hoc utility so it works for now.
-    if args.manifest_files.len() == 0 {
+    if args.manifest_files.is_empty() {
         if let Ok(dirs) = std::fs::read_dir(".repo/manifests") {
             for dir_entry in dirs {
                 let dir_entry = dir_entry?;
@@ -159,32 +159,32 @@ fn main() -> Result<(), Error> {
                         let name = remote.name();
                         let to_subst = vec![("remote_name".to_string(), name.to_string())];
                         let context: HashMap<_, _> = to_subst.into_iter().collect();
-                        let config_subst = envsubst::substitute(config_str.clone(), &context)?;
+                        let config_subst = substitute(config_str.clone(), &context)?;
                         let mut config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
                         let mut args_map: HashMap<String, String> = HashMap::new();
                         if let Some(push_url) = args.push_url.clone() {
                             args_map.insert(
                                 "push_url".to_string(),
-                                envsubst::substitute(push_url, &context)?,
+                                substitute(push_url, &context)?,
                             );
                         }
                         if let Some(fetch_url) = args.fetch_url.clone() {
                             args_map.insert(
                                 "fetch_url".to_string(),
-                                envsubst::substitute(fetch_url, &context)?,
+                                substitute(fetch_url, &context)?,
                             );
                         }
                         if let Some(review_url) = args.review_url.clone() {
                             args_map.insert(
                                 "review_url".to_string(),
-                                envsubst::substitute(review_url, &context)?,
+                                substitute(review_url, &context)?,
                             );
                         }
 
                         if let Some(review_protocol) = args.review_url.clone() {
                             args_map.insert(
                                 "review_protocol".to_string(),
-                                String::from(review_protocol),
+                                review_protocol,
                             );
                         }
 
@@ -193,9 +193,9 @@ fn main() -> Result<(), Error> {
                             let local_remote = manifest::Remote::new(
                                 name.clone(),
                                 None,
-                                config.get("push_url").map(|s| s.clone()),
+                                config.get("push_url").cloned(),
                                 fetch_url.to_string(),
-                                config.get("review_url").map(|s| s.clone()),
+                                config.get("review_url").cloned(),
                                 None,
                                 config
                                     .get("review_protocol")
