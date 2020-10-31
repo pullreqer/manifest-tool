@@ -8,10 +8,10 @@ edition = "2018"
 [workspace]
 
 [dependencies]
-gumdrop = {version = "0.8.0", features = ["default_expr"]}
 git_repo_manifest = { path = "git_repo_manifest" }
 quick-error = "2.0.0"
 envsubst = "0.2.0"
 dirs-next = "2.0.0"
 quick-xml = "0.20.0"
 serde = "1.0.117"
+clap = "2.33.3"

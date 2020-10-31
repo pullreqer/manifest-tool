@@ -1,8 +1,8 @@
+use clap;
 use dirs_next as dirs;
 use envsubst::{self, substitute};
 use git_repo_manifest as manifest;
 use git_repo_manifest::Manifest;
-use gumdrop::Options;
 use quick_error::quick_error;
 use quick_xml as qxml;
 use serde::ser::Serialize;
@@ -10,7 +10,7 @@ use serde::ser::Serialize;
 use std::collections::HashMap;
 use std::io::{BufRead, Read, Write};
 use std::str::FromStr;
-use std::{ffi, fs, io, path, str};
+use std::{env, ffi, fs, io, path, str};
 
 quick_error! {
     #[derive(Debug)]
@@ -25,101 +25,22 @@ quick_error! {
             from()
         }
 
-    FileNotFound(p: Box<path::PathBuf>) {
-    display("file not found: {:#?}\n", p)
+        FileNotFound(p: Box<path::PathBuf>) {
+            display("file not found: {:#?}\n", p)
+        }
+        ConfigFileFormat
+        FetchRequired
+        UnspecifiedQuantifier
+        UnknownConfigPath
+        TemplateNotFound(path: String) {
+            display("template not found: {}", path)
+        }
     }
-    ConfigFileFormat
-    FetchRequired
-    UnspecifiedQuantifier
-    TemplateNotFound(path: String) {
-        display("template not found: {}", path)
-    }
-    }
-}
-
-#[derive(Debug, Options)]
-struct Args {
-    #[options(help = "print help message")]
-    help: bool,
-
-    #[options(help = "for all projects envsubst template", meta = "TEMPLATE")]
-    projects: Option<String>,
-
-    #[options(help = "for all remotes envsubst template", meta = "TEMPLATE")]
-    remotes: Option<String>,
-
-    #[options(
-        short = 'm',
-        long = "manifest",
-        help = "(default) convert to a manifest to local_manifest with local.env",
-        default = ".repo/manifest.xml"
-    )]
-    manifest: String,
-
-    #[options(short = 'd', long = "dir", help = "template dir")]
-    template_dir: Option<String>,
 }
 
 fn split_once(s: &str, delim: char) -> Option<(&str, &str)> {
     let pos = s.find(delim);
     pos.map(|idx| (&s[0..idx], &s[idx + delim.len_utf8()..]))
-}
-
-fn template_path(path: &Option<String>) -> Option<path::PathBuf> {
-    if let Some(dir) = path {
-        let mut pbuf = path::PathBuf::new();
-        pbuf.push(dir);
-        Some(pbuf)
-    } else {
-        dirs::config_dir()
-    }
-}
-
-#[derive(Clone)]
-enum TemplateKind {
-    Project(String),
-    Remote(String),
-}
-
-impl TemplateKind {
-    fn path_setup(&self, p: &mut path::PathBuf) {
-        let sub = match self {
-            Self::Project(_) => "project",
-            Self::Remote(_) => "remote",
-        };
-        p.extend(&["manifest-tool", sub]);
-        p.push(self.to_string());
-    }
-
-    fn to_string(&self) -> &String {
-        match self {
-            Self::Project(s) | Self::Remote(s) => s,
-        }
-    }
-}
-
-impl Args {
-    fn read_template_file(&self, k: TemplateKind) -> Result<String, crate::Error> {
-        let s = k.to_string();
-        let path = path::Path::new(&s);
-        let mut template = String::new();
-        if k.clone().to_string() == "-" {
-            io::BufReader::new(io::stdin()).read_to_string(&mut template)?;
-        } else if let Some(mut file_path) = template_path(&self.template_dir) {
-            k.path_setup(&mut file_path);
-            let mut f =
-                fs::File::open(path).or(Err(Error::FileNotFound(Box::new(path.to_path_buf()))))?;
-            f.read_to_string(&mut template)?;
-        } else if path.exists() {
-            let mut f =
-                fs::File::open(path).or(Err(Error::FileNotFound(Box::new(path.to_path_buf()))))?;
-            f.read_to_string(&mut template)?;
-        } else {
-            return Err(Error::TemplateNotFound(k.to_string().clone()));
-        }
-
-        Ok(template)
-    }
 }
 
 fn read_dot_env<T: io::Read>(fd: io::BufReader<T>) -> Result<HashMap<String, String>, Error> {
@@ -169,62 +90,179 @@ impl IntoHash<String, String> for manifest::Remote {
     }
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::parse_args_default_or_exit();
+struct ManifestArg {
+    template: path::PathBuf,
+    manifest_dir: path::PathBuf,
+    local_manifest_dir: path::PathBuf,
+}
 
-    if let Some(template) = &args.projects {
-        let template = args.read_template_file(TemplateKind::Project(template.clone()))?;
-        let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
-        let default_file = io::BufReader::new(default_file);
-        let mut manifest: Manifest = manifest::de::from_reader(default_file)?;
-        manifest.set_defaults();
-        let mut remote_hash = HashMap::new();
-        manifest.remotes().iter().for_each(|remote| {
-            remote_hash.insert(remote.name().to_string(), remote);
-        });
+struct EnvArg {
+    template: path::PathBuf,
+    manifest: path::PathBuf,
+}
 
-        let mut stdout = io::BufWriter::new(io::stdout());
-        for project in manifest.projects() {
-            let mut context: HashMap<String, String> = HashMap::new();
-            if let Some(remote_name) = project.remote() {
-                if let Some(remote) = remote_hash.get(remote_name) {
-                    remote.into_hash(&mut context);
+enum Mode {
+    Projects(EnvArg),
+    Remotes(EnvArg),
+    Convert(ManifestArg),
+}
+
+fn args<'a>(config_dir: path::PathBuf) -> Result<clap::ArgMatches<'a>, clap::Error> {
+    use clap::Arg;
+    let app_name = "manifest-tool";
+    let config_dir = config_dir.join(app_name);
+    let convert_dir = config_dir.join("convert").into_os_string();
+    let remote_dir = config_dir.join("remotes").into_os_string();
+    let project_dir = config_dir.join("projects").into_os_string();
+
+    let app = clap::App::new(app_name)
+        .arg(
+            Arg::with_name("convert")
+                .short("c")
+                .takes_value(false)
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("remotes")
+                .short("r")
+                .takes_value(false)
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("projects")
+                .short("p")
+                .takes_value(false)
+                .required(false),
+        )
+        .group(
+            clap::ArgGroup::with_name("mode")
+                .args(&["convert", "projects", "remotes"])
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("template-file")
+                .short("t")
+                .takes_value(true)
+                .required(false)
+                .default_value("default.env"),
+        )
+        .arg(
+            Arg::with_name("template-dir")
+                .short("T")
+                .takes_value(true)
+                .required(false)
+                .default_value_ifs_os(&[
+                    ("convert", None, &convert_dir),
+                    ("remotes", None, &remote_dir),
+                    ("projects", None, &project_dir),
+                ]),
+        )
+        .arg(
+            Arg::with_name("manifest-dir")
+                .short("D")
+                .takes_value(true)
+                .required(false)
+                .default_value(".repo/manifests"),
+        )
+        .arg(
+            Arg::with_name("manifest-dest")
+                .short("M")
+                .takes_value(true)
+                .default_value_if("convert", None, ".repo/local_manifests")
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("manifest-file")
+                .short("m")
+                .takes_value(true)
+                .default_value("../manifest.xml") // ¯\_(ツ)_/¯
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("TEMPLATE")
+                .takes_value(true)
+                .required(false)
+                .default_value_ifs(&[
+                    ("convert", None, "unused"),
+                    ("remotes", None, "default.env"),
+                    ("projects", None, "default.env"),
+                ]),
+        );
+    app.get_matches_from_safe(env::args())
+}
+
+fn mode_for_args<'a>(config_dir: path::PathBuf) -> Mode {
+    match args(config_dir) {
+        Err(err) => err.exit(),
+        Ok(arg) => {
+            let template = path::PathBuf::from(arg.value_of("template-dir").unwrap())
+                .join(arg.value_of("template-file").unwrap());
+
+            if arg.is_present("convert") {
+                Mode::Convert(ManifestArg {
+                    template,
+                    manifest_dir: path::PathBuf::from(arg.value_of("manifest-dir").unwrap()),
+                    local_manifest_dir: path::PathBuf::from(arg.value_of("manifest-dest").unwrap()),
+                })
+            } else {
+                let manifest = path::PathBuf::from(arg.value_of("manifest-dir").unwrap())
+                    .join(arg.value_of("manifest-file").unwrap());
+                let env_arg = EnvArg { template, manifest };
+                if arg.is_present("remotes") {
+                    Mode::Remotes(env_arg)
+                } else {
+                    Mode::Projects(env_arg)
                 }
             }
-            context.insert("project_name".to_string(), project.name().to_string());
-            envsubst_write(&template, &mut stdout, &context)?;
         }
-        return Ok(stdout.flush()?);
     }
+}
 
-    println!("Generating local manifest");
-    if let Some(template) = &args.remotes {
-        let template = args.read_template_file(TemplateKind::Remote(template.to_string()))?;
-        let mut stdout = io::BufWriter::new(io::stdout());
-        let mut context: HashMap<String, String> = HashMap::new();
-        let default_file = fs::File::open(path::Path::new(".repo/manifest.xml"))?;
-        let default_file = io::BufReader::new(default_file);
-        let manifest: Manifest = manifest::de::from_reader(default_file)?;
-        for remote in manifest.remotes() {
-            remote.into_hash(&mut context);
-            envsubst_write(&template, &mut stdout, &context)?;
-        }
-        return Ok(stdout.flush()?);
-    }
-
-    let config_file = dirs::config_dir().map(|mut dir| {
-        dir.extend(&["manifest-tool", "local.env"]);
-        dir
+fn projects_cmd(arg: EnvArg) -> Result<(), Error> {
+    let mut template = String::new();
+    fs::File::open(arg.template)?.read_to_string(&mut template)?;
+    let default_file = fs::File::open(arg.manifest)?;
+    let default_file = io::BufReader::new(default_file);
+    let mut manifest: Manifest = manifest::de::from_reader(default_file)?;
+    manifest.set_defaults();
+    let mut remote_hash = HashMap::new();
+    manifest.remotes().iter().for_each(|remote| {
+        remote_hash.insert(remote.name().to_string(), remote);
     });
-    let mut config_str = String::new();
 
-    if let Some(config_file) = config_file {
-        let fd = fs::File::open(config_file.clone())
-            .or(Err(Error::FileNotFound(Box::new(config_file))))?;
-        let _ = io::BufReader::new(fd).read_to_string(&mut config_str)?;
-    };
+    let mut stdout = io::BufWriter::new(io::stdout());
+    for project in manifest.projects() {
+        let mut context: HashMap<String, String> = HashMap::new();
+        if let Some(remote_name) = project.remote() {
+            if let Some(remote) = remote_hash.get(remote_name) {
+                remote.into_hash(&mut context);
+            }
+        }
+        context.insert("project_name".to_string(), project.name().to_string());
+        envsubst_write(&template, &mut stdout, &context)?;
+    }
+    return Ok(stdout.flush()?);
+}
 
-    if let Ok(dirs) = std::fs::read_dir(args.manifest) {
+fn remotes_cmd(arg: EnvArg) -> Result<(), Error> {
+    let mut template = String::new();
+    fs::File::open(arg.template)?.read_to_string(&mut template)?;
+    let mut stdout = io::BufWriter::new(io::stdout());
+    let mut context: HashMap<String, String> = HashMap::new();
+    let manifest_file = fs::File::open(arg.manifest)?;
+    let manifest_file = io::BufReader::new(manifest_file);
+    let manifest: Manifest = manifest::de::from_reader(manifest_file)?;
+    for remote in manifest.remotes() {
+        remote.into_hash(&mut context);
+        envsubst_write(&template, &mut stdout, &context)?;
+    }
+    return Ok(stdout.flush()?);
+}
+
+fn convert_cmd(arg: ManifestArg) -> Result<(), Error> {
+    let mut template = String::new();
+    fs::File::open(arg.template)?.read_to_string(&mut template)?;
+    if let Ok(dirs) = std::fs::read_dir(arg.manifest_dir) {
         for dir_entry in dirs {
             let dir_entry = dir_entry?;
             let file_name = dir_entry.file_name();
@@ -237,16 +275,15 @@ fn main() -> Result<(), Error> {
                         .or(Err(Error::FileNotFound(Box::new(dir_entry.path()))))?,
                 );
                 let manifest: Manifest = manifest::de::from_reader(file)?;
-                let local_manifests_path = path::Path::new(".repo").join("local_manifests");
-                fs::create_dir_all(local_manifests_path.clone())?;
-                let local_manifest_path = local_manifests_path.join(file_name);
+                fs::create_dir_all(arg.local_manifest_dir.clone())?;
+                let local_manifest_path = arg.local_manifest_dir.clone().join(file_name);
                 let mut local_manifest_file = fs::File::create(local_manifest_path)?;
                 let mut remotes = Vec::new();
                 for remote in manifest.remotes() {
                     let name = remote.name();
                     let mut context = HashMap::new();
                     remote.into_hash(&mut context);
-                    let config_subst = substitute(config_str.clone(), &context)?;
+                    let config_subst = substitute(template.clone(), &context)?;
                     let config = read_dot_env(io::BufReader::new(config_subst.as_bytes()))?;
 
                     if let Some(fetch_url) = config.get("fetch_url") {
@@ -284,5 +321,20 @@ fn main() -> Result<(), Error> {
             }
         }
     }
+
     Ok(())
+}
+
+fn main() -> Result<(), Error> {
+    if let Some(config_dir) = dirs::config_dir() {
+        match mode_for_args(config_dir) {
+            Mode::Projects(arg) => projects_cmd(arg),
+
+            Mode::Remotes(arg) => remotes_cmd(arg),
+
+            Mode::Convert(arg) => convert_cmd(arg),
+        }
+    } else {
+        Err(Error::UnknownConfigPath)
+    }
 }
