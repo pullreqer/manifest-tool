@@ -1,7 +1,12 @@
-By default it will convert a .repo/manifests/default.xml into a .repo/local_manifests/default.xml
-by reading a template is read from ~/.config/manifest-tool/local.env file.
-The template should look something like:
+manifest-tool has 3 modes:
 
+`-c`, `-p`, and `-r`,  for `convert`, `projects`, and `remotes`.
+
+### Convert:
+Reads an env file: `~/.config/manifest-tool/convert/default.env` by default,
+Reads the manifest files in .`repo/manifests`, and replaces the substitutions produced within the env file,
+Then it writes the manifest files to `.repo/local_manifests/`.
+An example `convert/default.env` is given here:
 ```
 push_url=ssh://test@example.com:2222/${remote_name}/
 review_url=ssh://localhost:2222/
@@ -9,14 +14,20 @@ fetch_url=ssh://test@example.com:2222/${remote_name}/
 review_proto=gerrit
 ```
 
+### Remotes & Parse,
+
+Remotes and Parse act similarly, the primary difference is between the variables
+that are available for substitutions, they merely read a manifest and apply substitions,
+writing the result back to stdout.
+
 The `-p foo.env` option evaluates a given template for each project
 searching for templates in  ~/.config/manifest-tool/projects/foo.env.
 
 Example:
 ```
-cat <<-"EOF" | manifest-tool -P -
+cat <<-"EOF" | manifest-tool -p -
 echo ${remote_name}/${project_name}
 EOF
 ```
 
-Similarly the `-r foo.env` option evalates a given template for each remote ~/.config/manifest-tool/remote/foo.env
+Will write some stuff to stdout.

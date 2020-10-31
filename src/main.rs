@@ -107,7 +107,10 @@ enum Mode {
     Convert(ManifestArg),
 }
 
-fn args<'a>(config_dir: path::PathBuf) -> Result<clap::ArgMatches<'a>, clap::Error> {
+fn args<'a, 'b: 'a>(
+    config_dir: path::PathBuf,
+    omg: &'b ffi::OsString,
+) -> Result<clap::ArgMatches<'a>, clap::Error> {
     use clap::Arg;
     let app_name = "manifest-tool";
     let config_dir = config_dir.join(app_name);
@@ -119,19 +122,25 @@ fn args<'a>(config_dir: path::PathBuf) -> Result<clap::ArgMatches<'a>, clap::Err
         .arg(
             Arg::with_name("convert")
                 .short("c")
+                .long("convert")
                 .takes_value(false)
+                .help("local_manifests converter mode")
                 .required(false),
         )
         .arg(
             Arg::with_name("remotes")
                 .short("r")
+                .long("remotes")
                 .takes_value(false)
+                .help("forall remotes mode")
                 .required(false),
         )
         .arg(
             Arg::with_name("projects")
                 .short("p")
+                .long("projects")
                 .takes_value(false)
+                .help("forall projects mode")
                 .required(false),
         )
         .group(
@@ -151,6 +160,8 @@ fn args<'a>(config_dir: path::PathBuf) -> Result<clap::ArgMatches<'a>, clap::Err
                 .short("T")
                 .takes_value(true)
                 .required(false)
+                // We just want this in the help text...
+                .default_value_os(&omg)
                 .default_value_ifs_os(&[
                     ("convert", None, &convert_dir),
                     ("remotes", None, &remote_dir),
@@ -191,8 +202,8 @@ fn args<'a>(config_dir: path::PathBuf) -> Result<clap::ArgMatches<'a>, clap::Err
     app.get_matches_from_safe(env::args())
 }
 
-fn mode_for_args<'a>(config_dir: path::PathBuf) -> Mode {
-    match args(config_dir) {
+fn mode_for_args<'a, 'b: 'a>(config_dir: path::PathBuf, omg: &'b ffi::OsString) -> Mode {
+    match args(config_dir, omg) {
         Err(err) => err.exit(),
         Ok(arg) => {
             let template = path::PathBuf::from(arg.value_of("template-dir").unwrap())
@@ -327,7 +338,8 @@ fn convert_cmd(arg: ManifestArg) -> Result<(), Error> {
 
 fn main() -> Result<(), Error> {
     if let Some(config_dir) = dirs::config_dir() {
-        match mode_for_args(config_dir) {
+        let omg = config_dir.join("<mode>").into_os_string();
+        match mode_for_args(config_dir, &omg) {
             Mode::Projects(arg) => projects_cmd(arg),
 
             Mode::Remotes(arg) => remotes_cmd(arg),
