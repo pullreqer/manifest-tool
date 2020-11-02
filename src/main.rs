@@ -8,7 +8,7 @@ use quick_xml as qxml;
 use serde::ser::Serialize;
 
 use std::collections::HashMap;
-use std::io::{BufRead, Read, Write};
+use std::io::{BufRead, Read};
 use std::str::FromStr;
 use std::{env, ffi, fs, io, path, str};
 
@@ -252,7 +252,7 @@ fn projects_cmd(arg: EnvArg) -> Result<(), Error> {
         context.insert("project_name".to_string(), project.name().to_string());
         envsubst_write(&template, &mut stdout, &context)?;
     }
-    return Ok(stdout.flush()?);
+    return Ok(());
 }
 
 fn remotes_cmd(arg: EnvArg) -> Result<(), Error> {
@@ -267,7 +267,7 @@ fn remotes_cmd(arg: EnvArg) -> Result<(), Error> {
         remote.into_hash(&mut context);
         envsubst_write(&template, &mut stdout, &context)?;
     }
-    return Ok(stdout.flush()?);
+    return Ok(())
 }
 
 fn convert_cmd(arg: ManifestArg) -> Result<(), Error> {
