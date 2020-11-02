@@ -1,3 +1,5 @@
+See the [documentation](https://pullreqer.github.io)
+
 manifest-tool has 3 modes:
 
 `-c`, `-p`, and `-r`,  for `convert`, `projects`, and `remotes`.
