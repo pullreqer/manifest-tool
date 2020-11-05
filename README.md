@@ -1,4 +1,4 @@
-See the [documentation](https://pullreqer.github.io)
+See the [documentation](https://pullreqr.github.io)
 
 manifest-tool has 3 modes:
 
